@@ -78,11 +78,6 @@ suite("Functional Tests", function() {
         // Tests the sorting: savedThread is the last created, therefore
         // last bumped, so should come first
         assert.strictEqual(recentThreads[0]._id, savedThread._id);
-
-        // `reported` and `delete_password` fields should not be returned
-        recentThreads.forEach(thread =>
-          assert.doesNotHaveAnyKeys(thread, ["reported", "delete_password"])
-        );
       });
 
       test("Return 10 most recent threads", function() {
@@ -164,14 +159,58 @@ suite("Functional Tests", function() {
         assert.strictEqual(updatedThread._id, latestThread._id);
         assert.lengthOf(updatedThread.replies, 5);
         assert.lengthOf(latestThread.replies, 3);
-        assert.deepEqual(
-          updatedThread.replies.slice(0, 3),
-          latestThread.replies
+
+        const filteredUpdatedThread = _.omit(updatedThread, [
+          "reported",
+          "delete_password"
+        ]);
+        filteredUpdatedThread.replies = filteredUpdatedThread.replies.map(r =>
+          _.omit(r, ["reported", "delete_password"])
         );
+
+        assert.deepEqual(
+          latestThread.replies,
+          filteredUpdatedThread.replies.slice(0, 3)
+        );
+      });
+
+      test("Omit fields `reported` and `delete_password` from results", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then add 5 replies to it
+        for (let i = 0; i < 5; i++) {
+          const text = `reply ${i}`;
+          const replyPostRes = await chai
+            .request(server)
+            .post(`/api/replies/${board}`)
+            .send({ thread_id, text, delete_password });
+        }
+
+        // `reported` and `delete_password` fields should not be returned
+        const getRes = await chai.request(server).get(`/api/threads/${board}`);
+        const recentThreads = getRes.body;
+        recentThreads.forEach(thread => {
+          assert.doesNotHaveAnyKeys(thread, ["reported", "delete_password"]);
+          thread.replies.forEach(reply =>
+            assert.doesNotHaveAnyKeys(reply, ["reported", "delete_password"])
+          );
+        });
       });
     });
 
-    suite("DELETE", function() {});
+    suite("DELETE", function() {
+      // test("Correct delete_password", async function() {});
+    });
 
     suite("PUT", function() {});
   });
@@ -218,7 +257,49 @@ suite("Functional Tests", function() {
       });
     });
 
-    suite("GET", function() {});
+    suite("GET", function() {
+      test("Valid thread with 5 replies", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then add 5 replies to it
+        let savedThread;
+        for (let i = 0; i < 5; i++) {
+          const text = `reply ${i}`;
+          const replyPostRes = await chai
+            .request(server)
+            .post(`/api/replies/${board}`)
+            .send({ thread_id, text, delete_password });
+
+          savedThread = replyPostRes.body;
+        }
+
+        // Then search for it and see if it comes out
+        const threadGetRes = await chai
+          .request(server)
+          .get(`/api/replies/${board}`)
+          .query({ thread_id });
+        const fetchedThread = threadGetRes.body;
+
+        const filteredSavedThread = _.omit(savedThread, [
+          "reported",
+          "delete_password"
+        ]);
+        filteredSavedThread.replies = filteredSavedThread.replies.map(r =>
+          _.omit(r, ["reported", "delete_password"])
+        );
+        assert.deepEqual(fetchedThread, filteredSavedThread);
+      });
+    });
 
     suite("PUT", function() {});
 

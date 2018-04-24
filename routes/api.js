@@ -28,17 +28,35 @@ module.exports = function(app) {
         .limit(10)
         .sort({ bumped_on: -1 })
         .slice("replies", 3)
-        .select({ reported: false, delete_password: false });
+        .select({
+          reported: false,
+          delete_password: false,
+          "replies.reported": false,
+          "replies.delete_password": false
+        });
       res.json(recentThreads);
     });
 
-  app.route("/api/replies/:board").post(async (req, res) => {
-    const newReply = Object.assign({}, req.body, {
-      thread_id: new ObjectId(req.body.thread_id)
+  app
+    .route("/api/replies/:board")
+    .post(async (req, res) => {
+      const newReply = Object.assign({}, req.body, {
+        thread_id: new ObjectId(req.body.thread_id)
+      });
+      const thread = await Thread.findById(newReply.thread_id);
+      thread.replies.unshift(newReply);
+      await thread.save();
+      res.json(thread);
+    })
+    .get(async (req, res) => {
+      const thread = await Thread.findById(
+        new ObjectId(req.query.thread_id)
+      ).select({
+        reported: false,
+        delete_password: false,
+        "replies.reported": false,
+        "replies.delete_password": false
+      });
+      res.json(thread);
     });
-    const thread = await Thread.findById(newReply.thread_id);
-    thread.replies.unshift(newReply);
-    await thread.save();
-    res.json(thread);
-  });
 };
