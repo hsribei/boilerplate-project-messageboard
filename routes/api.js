@@ -8,6 +8,7 @@
 
 "use strict";
 
+const ObjectId = require("mongodb").ObjectID;
 const { Thread, Reply } = require("../models");
 
 module.exports = function(app) {
@@ -30,5 +31,13 @@ module.exports = function(app) {
       res.json(recentThreads);
     });
 
-  app.route("/api/replies/:board");
+  app.route("/api/replies/:board").post(async (req, res) => {
+    const newReply = Object.assign({}, req.body, {
+      thread_id: new ObjectId(req.body.thread_id)
+    });
+    const thread = await Thread.findById(newReply.thread_id);
+    thread.replies.push(newReply);
+    await thread.save();
+    res.json(thread);
+  });
 };

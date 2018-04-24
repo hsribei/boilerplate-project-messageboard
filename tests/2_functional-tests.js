@@ -23,6 +23,7 @@ function dot(property) {
 }
 
 suite("Functional Tests", function() {
+  this.timeout(10000);
   suite("API ROUTING FOR /api/threads/:board", function() {
     suite("POST", function() {
       test("Create valid thread and typecheck result", async function() {
@@ -85,7 +86,6 @@ suite("Functional Tests", function() {
       });
 
       test("Return 10 most recent threads", function() {
-        this.timeout(10000);
         const board = "test";
         // POST 15 threads
         const text = "test";
@@ -141,7 +141,48 @@ suite("Functional Tests", function() {
   });
 
   suite("API ROUTING FOR /api/replies/:board", function() {
-    suite("POST", function() {});
+    suite("POST", function() {
+      test("Create valid reply", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        console.log(thread);
+        const thread_id = thread._id;
+
+        // Then add a reply to it
+        const replyPostRes = await chai
+          .request(server)
+          .post(`/api/replies/${board}`)
+          .send({ thread_id, text, delete_password });
+
+        const updatedThread = replyPostRes.body;
+        console.log(updatedThread);
+
+        assert.strictEqual(thread._id, updatedThread._id);
+        assert.isBelow(
+          new Date(thread.bumped_on),
+          new Date(updatedThread.bumped_on)
+        );
+        assert.isNotEmpty(updatedThread.replies);
+        assert.lengthOf(updatedThread.replies, 1);
+        const reply = updatedThread.replies[0];
+        const properties = [
+          "_id",
+          "text",
+          "created_on",
+          "delete_password",
+          "reported"
+        ];
+        properties.forEach(property => assert.property(reply, property));
+      });
+    });
 
     suite("GET", function() {});
 
