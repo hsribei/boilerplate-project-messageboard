@@ -131,8 +131,44 @@ suite("Functional Tests", function() {
           });
       });
 
-      // test("Return only the most recent 3 replies", function() {
-      // });
+      test("Return only the most recent 3 replies", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then add 5 replies to it
+        let updatedThread;
+        for (let i = 0; i < 5; i++) {
+          const text = `reply ${i}`;
+          const replyPostRes = await chai
+            .request(server)
+            .post(`/api/replies/${board}`)
+            .send({ thread_id, text, delete_password });
+
+          updatedThread = replyPostRes.body;
+        }
+
+        // Then verify that only the most recent 3 are returned by GET
+        // /api/threads/:board
+        const getRes = await chai.request(server).get(`/api/threads/${board}`);
+        const recentThreads = getRes.body;
+        const latestThread = recentThreads[0];
+        assert.strictEqual(updatedThread._id, latestThread._id);
+        assert.lengthOf(updatedThread.replies, 5);
+        assert.lengthOf(latestThread.replies, 3);
+        assert.deepEqual(
+          updatedThread.replies.slice(0, 3),
+          latestThread.replies
+        );
+      });
     });
 
     suite("DELETE", function() {});
@@ -153,7 +189,6 @@ suite("Functional Tests", function() {
           .post(`/api/threads/${board}`)
           .send({ text, delete_password });
         const thread = threadPostRes.body;
-        console.log(thread);
         const thread_id = thread._id;
 
         // Then add a reply to it
@@ -163,7 +198,6 @@ suite("Functional Tests", function() {
           .send({ thread_id, text, delete_password });
 
         const updatedThread = replyPostRes.body;
-        console.log(updatedThread);
 
         assert.strictEqual(thread._id, updatedThread._id);
         assert.isBelow(

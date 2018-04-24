@@ -27,6 +27,7 @@ module.exports = function(app) {
       const recentThreads = await Thread.find({})
         .limit(10)
         .sort({ bumped_on: -1 })
+        .slice("replies", 3)
         .select({ reported: false, delete_password: false });
       res.json(recentThreads);
     });
@@ -36,7 +37,7 @@ module.exports = function(app) {
       thread_id: new ObjectId(req.body.thread_id)
     });
     const thread = await Thread.findById(newReply.thread_id);
-    thread.replies.push(newReply);
+    thread.replies.unshift(newReply);
     await thread.save();
     res.json(thread);
   });
