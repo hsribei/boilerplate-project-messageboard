@@ -209,7 +209,65 @@ suite("Functional Tests", function() {
     });
 
     suite("DELETE", function() {
-      // test("Correct delete_password", async function() {});
+      test("Correct delete_password", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then delete it
+        const threadDeleteRes = await chai
+          .request(server)
+          .delete(`/api/threads/${board}`)
+          .send({ thread_id, delete_password });
+
+        assert.strictEqual(threadDeleteRes.status, 200);
+        assert.strictEqual(threadDeleteRes.text, "success");
+
+        // And confirm it's not available anymore
+        const threadGetRes = await chai
+          .request(server)
+          .get(`/api/replies/${board}`)
+          .query({ thread_id });
+        assert.strictEqual(threadGetRes.status, 404);
+      });
+
+      test("Wrong delete_password", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then try to delete it with the wrong password
+        const threadDeleteRes = await chai
+          .request(server)
+          .delete(`/api/threads/${board}`)
+          .send({ thread_id, delete_password: "wrong password" });
+
+        assert.strictEqual(threadDeleteRes.status, 403);
+        assert.strictEqual(threadDeleteRes.text, "incorrect password");
+
+        // And confirm it's still there
+        const threadGetRes = await chai
+          .request(server)
+          .get(`/api/replies/${board}`)
+          .query({ thread_id });
+        assert.strictEqual(threadGetRes.body._id, thread_id);
+      });
     });
 
     suite("PUT", function() {});

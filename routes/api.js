@@ -35,6 +35,15 @@ module.exports = function(app) {
           "replies.delete_password": false
         });
       res.json(recentThreads);
+    })
+    .delete(async (req, res) => {
+      const thread = await Thread.findById(req.body.thread_id);
+      if (req.body.delete_password === thread.delete_password) {
+        await Thread.remove({ _id: req.body.thread_id });
+        res.send("success");
+      } else {
+        res.status(403).send("incorrect password");
+      }
     });
 
   app
@@ -57,6 +66,10 @@ module.exports = function(app) {
         "replies.reported": false,
         "replies.delete_password": false
       });
-      res.json(thread);
+      if (thread) {
+        res.json(thread);
+      } else {
+        res.sendStatus(404);
+      }
     });
 };
