@@ -18,6 +18,10 @@ chai.use(chaiHttp);
 const newAsFn = type => (...args) => new type(...args);
 const isDateFromString = fp.compose(_.isDate, newAsFn(Date));
 
+function dot(property) {
+  return obj => obj[property];
+}
+
 suite("Functional Tests", function() {
   suite("API ROUTING FOR /api/threads/:board", function() {
     suite("POST", function() {
@@ -48,7 +52,88 @@ suite("Functional Tests", function() {
       });
     });
 
-    suite("GET", function() {});
+    suite("GET", function() {
+      test("Create thread then GET board to confirm it's in the returned recent threads list", async function() {
+        const board = "test";
+        // POST
+        const text = "test";
+        const delete_password = "test";
+        const postRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+
+        const savedThread = postRes.body;
+
+        // GET
+        const getRes = await chai.request(server).get(`/api/threads/${board}`);
+
+        assert.strictEqual(getRes.status, 200);
+
+        const recentThreads = getRes.body;
+
+        assert.isArray(recentThreads);
+        assert.isNotEmpty(recentThreads);
+        // Tests the sorting: savedThread is the last created, therefore
+        // last bumped, so should come first
+        assert.strictEqual(recentThreads[0]._id, savedThread._id);
+
+        // `reported` and `delete_password` fields should not be returned
+        recentThreads.forEach(thread =>
+          assert.doesNotHaveAnyKeys(thread, ["reported", "delete_password"])
+        );
+      });
+
+      test("Return 10 most recent threads", function() {
+        this.timeout(10000);
+        const board = "test";
+        // POST 15 threads
+        const text = "test";
+        const delete_password = "test";
+
+        const requester = chai.request(server).keepOpen();
+
+        const postRequests = _.range(15).map(() =>
+          requester
+            .post(`/api/threads/${board}`)
+            .send({ text, delete_password })
+        );
+
+        return Promise.all(postRequests)
+          .then(responses => {
+            const savedThreads = fp.map(dot("body"))(responses);
+            // Sort DESC by bumped_on date
+            savedThreads.sort(
+              (a, b) => new Date(b.bumped_on) - new Date(a.bumped_on)
+            );
+
+            const recentThreads = requester
+              .get(`/api/threads/${board}`)
+              .then(res => res.body);
+
+            return Promise.all([savedThreads, recentThreads]);
+          })
+          .then(([savedThreads, recentThreads]) => {
+            assert.lengthOf(savedThreads, 15);
+            assert.lengthOf(recentThreads, 10);
+
+            const first10SavedIds = savedThreads.slice(0, 10).map(dot("_id"));
+            const recentIds = recentThreads.map(dot("_id"));
+
+            // NOTE: Not using same *Ordered* Members because "bumped_on"
+            // doesn't have enough resolution, and sometimes two entries have
+            // the same exact timestamp, whereas recentIds uses ObjectIDs for
+            // sorting and is always consistent with db insertion order (it
+            // seems)
+            assert.sameMembers(first10SavedIds, recentIds);
+
+            requester.close();
+          });
+      });
+
+      // test("Return only the most recent 3 replies", function() {
+      // });
+    });
 
     suite("DELETE", function() {});
 
