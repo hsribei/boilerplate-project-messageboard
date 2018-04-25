@@ -402,7 +402,82 @@ suite("Functional Tests", function() {
       });
     });
 
-    suite("PUT", function() {});
+    suite("PUT", function() {
+      test("Report valid reply", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then add a reply to it
+        const replyPostRes = await chai
+          .request(server)
+          .post(`/api/replies/${board}`)
+          .send({ thread_id, text, delete_password });
+
+        const updatedThread = replyPostRes.body;
+
+        // Then report the reply
+        const reply_id = updatedThread.replies[0];
+        const replyPutRes = await chai
+          .request(server)
+          .put(`/api/replies/${board}`)
+          .send({ thread_id, reply_id });
+        assert.strictEqual(replyPutRes.status, 200);
+        assert.strictEqual(replyPutRes.text, "success");
+      });
+
+      test("Valid thread, valid but inexistent reply", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then report an inexistent reply
+        const reply_id = new ObjectId();
+        const replyPutRes = await chai
+          .request(server)
+          .put(`/api/replies/${board}`)
+          .send({ thread_id, reply_id });
+        assert.strictEqual(replyPutRes.status, 404);
+      });
+
+      test("Valid thread, invalid reply", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then report an invalid reply_id
+        const reply_id = "not something new ObjectId() would generate";
+        const replyPutRes = await chai
+          .request(server)
+          .put(`/api/replies/${board}`)
+          .send({ thread_id, reply_id });
+        assert.strictEqual(replyPutRes.status, 404);
+      });
+    });
 
     suite("DELETE", function() {});
   });

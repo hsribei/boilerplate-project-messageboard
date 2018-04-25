@@ -85,5 +85,25 @@ module.exports = function(app) {
       } else {
         res.sendStatus(404);
       }
+    })
+    .put(async (req, res) => {
+      try {
+        const thread = await Thread.findById(req.body.thread_id);
+        if (thread) {
+          const reply = thread.replies.id(req.body.reply_id);
+          console.log(reply);
+          if (reply) {
+            reply.reported = true;
+            await thread.save();
+            res.send("success");
+          } else {
+            res.status(404).send("reply_id not found");
+          }
+        } else {
+          res.status(404).send("thread_id not found");
+        }
+      } catch (e) {
+        res.status(500).send(e.toString());
+      }
     });
 };
