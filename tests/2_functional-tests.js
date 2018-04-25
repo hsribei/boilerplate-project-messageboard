@@ -121,7 +121,7 @@ suite("Functional Tests", function() {
             // the same exact timestamp, whereas recentIds uses ObjectIDs for
             // sorting and is always consistent with db insertion order (it
             // seems)
-            assert.sameMembers(first10SavedIds, recentIds);
+            assert.sameMembers(recentIds, first10SavedIds);
 
             requester.close();
           });
@@ -157,7 +157,7 @@ suite("Functional Tests", function() {
         const getRes = await chai.request(server).get(`/api/threads/${board}`);
         const recentThreads = getRes.body;
         const latestThread = recentThreads[0];
-        assert.strictEqual(updatedThread._id, latestThread._id);
+        assert.strictEqual(latestThread._id, updatedThread._id);
         assert.lengthOf(updatedThread.replies, 5);
         assert.lengthOf(latestThread.replies, 3);
 
@@ -339,7 +339,7 @@ suite("Functional Tests", function() {
 
         const updatedThread = replyPostRes.body;
 
-        assert.strictEqual(thread._id, updatedThread._id);
+        assert.strictEqual(updatedThread._id, thread._id);
         assert.isBelow(
           new Date(thread.bumped_on),
           new Date(updatedThread.bumped_on)
