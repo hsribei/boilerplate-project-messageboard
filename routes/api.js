@@ -24,7 +24,7 @@ module.exports = function(app) {
       res.json(savedThread);
     })
     .get(async (req, res) => {
-      const recentThreads = await Thread.find({})
+      const recentThreads = await Thread.find({ board: req.params.board })
         .limit(10)
         .sort({ bumped_on: -1 })
         .slice("replies", 3)

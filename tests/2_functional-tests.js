@@ -81,6 +81,31 @@ suite("Functional Tests", function() {
         assert.strictEqual(recentThreads[0]._id, savedThread._id);
       });
 
+      test("Don't list threads from other boards", async function() {
+        const boardA = "test";
+        const boardB = "best";
+        // POST to boardA
+        const text = "test";
+        const delete_password = "test";
+        const postRes = await chai
+          .request(server)
+          .post(`/api/threads/${boardA}`)
+          .send({ text, delete_password });
+
+        const threadInBoardA = postRes.body;
+
+        // GET boardB
+        const getRes = await chai.request(server).get(`/api/threads/${boardB}`);
+
+        assert.strictEqual(getRes.status, 200);
+
+        const recentBoardBThreads = getRes.body;
+
+        const recentBoardBThreadIds = recentBoardBThreads.map(dot("_id"));
+
+        assert.notInclude(recentBoardBThreadIds, threadInBoardA._id);
+      });
+
       test("Return 10 most recent threads", function() {
         const board = "test";
         // POST 15 threads
