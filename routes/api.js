@@ -91,11 +91,33 @@ module.exports = function(app) {
         const thread = await Thread.findById(req.body.thread_id);
         if (thread) {
           const reply = thread.replies.id(req.body.reply_id);
-          console.log(reply);
           if (reply) {
             reply.reported = true;
             await thread.save();
             res.send("success");
+          } else {
+            res.status(404).send("reply_id not found");
+          }
+        } else {
+          res.status(404).send("thread_id not found");
+        }
+      } catch (e) {
+        res.status(500).send(e.toString());
+      }
+    })
+    .delete(async (req, res) => {
+      try {
+        const thread = await Thread.findById(req.body.thread_id);
+        if (thread) {
+          const reply = thread.replies.id(req.body.reply_id);
+          if (reply) {
+            if (req.body.delete_password === reply.delete_password) {
+              reply.remove();
+              await thread.save();
+              res.send("success");
+            } else {
+              res.status(403).send("incorrect password");
+            }
           } else {
             res.status(404).send("reply_id not found");
           }

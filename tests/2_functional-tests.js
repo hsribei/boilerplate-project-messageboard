@@ -479,6 +479,88 @@ suite("Functional Tests", function() {
       });
     });
 
-    suite("DELETE", function() {});
+    suite("DELETE", function() {
+      test("Correct delete_password", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then add a reply to it
+        const replyPostRes = await chai
+          .request(server)
+          .post(`/api/replies/${board}`)
+          .send({ thread_id, text, delete_password });
+        const updatedThread = replyPostRes.body;
+        const reply = updatedThread.replies[0];
+        const reply_id = reply._id;
+
+        // Then delete the reply
+        const replyDeleteRes = await chai
+          .request(server)
+          .delete(`/api/replies/${board}`)
+          .send({ thread_id, reply_id, delete_password });
+        assert.strictEqual(replyDeleteRes.status, 200);
+        assert.strictEqual(replyDeleteRes.text, "success");
+
+        // Then fetch thread afresh to see if reply was really removed
+        const threadGetRes = await chai
+          .request(server)
+          .get(`/api/replies/${board}`)
+          .query({ thread_id });
+        const updatedAgainThread = threadGetRes.body;
+        assert.isEmpty(updatedAgainThread.replies);
+      });
+
+      test("Incorrect delete_password", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then add a reply to it
+        const replyPostRes = await chai
+          .request(server)
+          .post(`/api/replies/${board}`)
+          .send({ thread_id, text, delete_password });
+        const updatedThread = replyPostRes.body;
+        const reply = updatedThread.replies[0];
+        const reply_id = reply._id;
+
+        // Then try to delete the reply with the wrong password
+        const replyDeleteRes = await chai
+          .request(server)
+          .delete(`/api/replies/${board}`)
+          .send({ thread_id, reply_id, delete_password: "wrong password" });
+        assert.strictEqual(replyDeleteRes.status, 403);
+        assert.strictEqual(replyDeleteRes.text, "incorrect password");
+
+        // Then fetch thread afresh to see if reply is still there
+        const threadGetRes = await chai
+          .request(server)
+          .get(`/api/replies/${board}`)
+          .query({ thread_id });
+        const threadAfterReplyDeletionAttempt = threadGetRes.body;
+        assert.isNotEmpty(threadAfterReplyDeletionAttempt.replies);
+        assert.strictEqual(
+          threadAfterReplyDeletionAttempt.replies[0]._id,
+          reply_id
+        );
+      });
+    });
   });
 });
