@@ -4,12 +4,18 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const express = require("express");
 const expect = require("chai").expect;
+const helmet = require("helmet");
 
 const apiRoutes = require("./routes/api.js");
 const fccTestingRoutes = require("./routes/fcctesting.js");
 const runner = require("./test-runner");
 
 const app = express();
+
+// Security stuff, as per FCC spec
+app.use(helmet.frameguard({ action: "sameorigin" }));
+app.use(helmet.dnsPrefetchControl());
+app.use(helmet.referrerPolicy({ policy: "same-origin" }));
 
 app.use("/public", express.static(process.cwd() + "/public"));
 
