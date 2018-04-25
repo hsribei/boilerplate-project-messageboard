@@ -24,16 +24,25 @@ module.exports = function(app) {
       res.json(savedThread);
     })
     .get(async (req, res) => {
-      const recentThreads = await Thread.find({ board: req.params.board })
-        .limit(10)
-        .sort({ bumped_on: -1 })
-        .slice("replies", 3)
-        .select({
-          reported: false,
-          delete_password: false,
-          "replies.reported": false,
-          "replies.delete_password": false
-        });
+      const recentThreads = await Thread.aggregate([
+        { $match: { board: req.params.board } },
+        { $sort: { bumped_on: -1 } },
+        { $limit: 10 },
+        {
+          $project: {
+            reported: false,
+            delete_password: false,
+            "replies.reported": false,
+            "replies.delete_password": false
+          }
+        },
+        {
+          $project: {
+            replies: { $slice: ["$replies", 3] },
+            replycount: { $size: "$replies" }
+          }
+        }
+      ]);
       res.json(recentThreads);
     })
     .delete(async (req, res) => {
