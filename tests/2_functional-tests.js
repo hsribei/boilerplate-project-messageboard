@@ -10,6 +10,7 @@ const chaiHttp = require("chai-http");
 const chai = require("chai");
 const _ = require("lodash");
 const fp = require("lodash/fp");
+const ObjectId = require("mongodb").ObjectID;
 const assert = chai.assert;
 const server = require("../server");
 
@@ -270,7 +271,49 @@ suite("Functional Tests", function() {
       });
     });
 
-    suite("PUT", function() {});
+    suite("PUT", function() {
+      test("Report valid thread", async function() {
+        const board = "test";
+        const text = "test";
+        const delete_password = "test";
+
+        // First, create thread
+        const threadPostRes = await chai
+          .request(server)
+          .post(`/api/threads/${board}`)
+          .send({ text, delete_password });
+        const thread = threadPostRes.body;
+        const thread_id = thread._id;
+
+        // Then report it
+        const threadPutRes = await chai
+          .request(server)
+          .put(`/api/threads/${board}`)
+          .send({ thread_id });
+        assert.strictEqual(threadPutRes.status, 200);
+        assert.strictEqual(threadPutRes.text, "success");
+      });
+
+      test("Valid but inexistent thread_id", async function() {
+        const board = "test";
+        const thread_id = new ObjectId();
+        const res = await chai
+          .request(server)
+          .put(`/api/threads/${board}`)
+          .send({ thread_id });
+        assert.strictEqual(res.status, 404);
+      });
+
+      test("Invalid thread_id", async function() {
+        const board = "test";
+        const thread_id = "not something new ObjectId() would come up with";
+        const res = await chai
+          .request(server)
+          .put(`/api/threads/${board}`)
+          .send({ thread_id });
+        assert.strictEqual(res.status, 500);
+      });
+    });
   });
 
   suite("API ROUTING FOR /api/replies/:board", function() {

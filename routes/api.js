@@ -44,6 +44,20 @@ module.exports = function(app) {
       } else {
         res.status(403).send("incorrect password");
       }
+    })
+    .put(async (req, res) => {
+      try {
+        const thread = await Thread.findById(req.body.thread_id);
+        if (thread) {
+          thread.reported = true;
+          await thread.save();
+          res.send("success");
+        } else {
+          res.sendStatus(404);
+        }
+      } catch (e) {
+        res.status(500).send(e.toString());
+      }
     });
 
   app
